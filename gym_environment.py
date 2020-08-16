@@ -40,7 +40,7 @@ class OneBidderEnv():  # gym.Env):
     def calculate_vcg_reward(self, utility, bids):
         utility_matrix = np.cumsum(
             np.flip(np.sort(utility.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
-        all_bids = np.concatenate((bids, self.self.rest_of_bids))
+        all_bids = np.concatenate((bids.cpu(), self.rest_of_bids))
         full_bids_matrix = np.cumsum(
             np.flip(np.sort(all_bids.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
         positions = vcg_prioritizer(all_bids, self.config["bids_per_participant"])

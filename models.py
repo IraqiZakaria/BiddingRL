@@ -24,7 +24,6 @@ class DQNbn(nn.Module):
         self.head = nn.Linear(512, n_actions)
 
     def forward(self, x):
-        x = x.float() / 255
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
@@ -51,8 +50,11 @@ class DQN(nn.Module):
         self.head = nn.Linear(512, n_actions)
 
     def forward(self, x):
-        x = x.float() / 255
-        x = F.relu(self.conv1(x))
+        try:
+            x = F.relu(self.conv1(x))
+        except:
+            x = torch.from_numpy(x)
+            x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = F.relu(self.fc4(x.view(x.size(0), -1)))

@@ -1,9 +1,12 @@
 from models import DQN
 from replayMemory import ReplayMemory
 import torch.optim as optim
+import torch
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 import random
+import matplotlib
 
 from gym_environment import OneBidderEnv
 
@@ -80,6 +83,8 @@ def plot_durations():
         plt.plot(means.numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
+    is_ipython = 'inline' in matplotlib.get_backend()
+
     if is_ipython:
         display.clear_output(wait=True)
         display.display(plt.gcf())
@@ -136,11 +141,11 @@ for i_episode in range(num_episodes):
     # Initialize the environment and state
     env.reset()
     env.resample()
-    state = env.state
-    for t in count():
+    state = env.utility_input
+    for t in range(100):
         # Select and perform an action
         action = select_action(state)
-        _, reward, done, _ = env.step(action.item())
+        _, reward, done, _ = env.step(action)
         reward = torch.tensor([reward], device=device)
 
         if not done:
