@@ -5,7 +5,10 @@ from gym import spaces
 
 from vcg_solver import vcg_prioritizer, vcg_allocator, compute_overall_payment, compute_payment
 
-class OneBidderEnv():#gym.Env):
+MIN_BID_VALUE, MAX_BID_VALUE = 0.0, 1.0
+
+
+class OneBidderEnv():  # gym.Env):
     """Custom Environment that follows gym interface"""
 
     def __init__(self, config):
@@ -24,6 +27,9 @@ class OneBidderEnv():#gym.Env):
                                             shape=(self.players_colluding * self.bids_per_participant,),
                                             dtype=np.float32)
         self.utility_input = config["utility"]
+        self.initial_utility = self.utility_input
+        self.initial_rest_of_bids = config["rest_of_bids"]
+        self.rest_of_bids = self.initial_rest_of_bids
 
     def step(self, action):
         # Execute one time step within the environment
@@ -32,12 +38,11 @@ class OneBidderEnv():#gym.Env):
         return self.utility_input, reward, done, {}
 
     def calculate_vcg_reward(self, utility, bids):
-        print("New Run")
-        utility_matrix = np.cumsum(np.flip(np.sort(utility.reshape((-1, self.config["bids_per_participant"])),axis=1), axis=1), axis=1)
-        all_bids = np.concatenate((bids, self.config["rest_of_bids"]))
-        print(all_bids)
-        full_bids_matrix = np.cumsum(np.flip(np.sort(all_bids.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
-        print(full_bids_matrix)
+        utility_matrix = np.cumsum(
+            np.flip(np.sort(utility.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
+        all_bids = np.concatenate((bids, self.self.rest_of_bids))
+        full_bids_matrix = np.cumsum(
+            np.flip(np.sort(all_bids.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
         positions = vcg_prioritizer(all_bids, self.config["bids_per_participant"])
         main_allocation = vcg_allocator(positions, self.config["items_to_sell"], self.config["number_of_players"])
         overall_allocation_value = compute_overall_payment(main_allocation, full_bids_matrix)
@@ -49,22 +54,58 @@ class OneBidderEnv():#gym.Env):
 
     def reset(self):
 
-        if self.config["distribution_type_colluders"] == "static":
-            self.utility_input = self.config["utility"]
+        if self.config["distribution_type_reset_outsiders"] == "static":
+            self.utility_input = self.initial_utility
         else:
             raise Exception('distribution type colluders not yet implemented')
-        if self.config["distribution_type_colluders"] == "static":
-            pass  # self.config["rest_of_bids"] will thus not change
+        if self.config["distribution_type_reset_colluders"] == "static":
+            self.rest_of_bids = self.initial_rest_of_bids
         else:
             raise Exception('distribution type other bidders not yet implemented')
         return
+
+    def make_sample_colluders(bidder, size):
+        if bidder.config["distribution_type_colluders"] == "uniform":
+            bids = np.random.uniform(size=(size, bidder.players_colluding * bidder.bids_per_participant,))
+            return np.flip(np.sort(bids, axis=1), axis=1)
+        elif bidder.config["distribution_type_outsiders"] == "perturbation":
+            std = bidder.config["perturbation_std"]
+            perturbation = np.random.normal(loc=1, scale=std,
+                                            size=(size, bidder.players_colluding * bidder.bids_per_participant,))
+            base_bid = bidder.initial_utility
+            value = np.flip(np.sort(np.clip(perturbation * base_bid[None, :], MIN_BID_VALUE, MAX_BID_VALUE), axis=1))
+            return value
+
+        else:
+            raise Exception("distribution not yet implemented")
+
+    def make_sample_rest_of_players(bidder, size):
+        number_of_bidders = bidder.config["number_of_players"] - bidder.players_colluding
+        full_size = (size, number_of_bidders * bidder.bids_per_participant,)
+        if bidder.config['distribution_type_outsiders'] == "uniform":
+            bids = np.random.uniform(size=full_size)
+            return np.flip(np.sort(bids, axis=1), axis=1)
+        if bidder.config["distribution_type_outsiders"] == "perturbation":
+            std = bidder.config["perturbation_std"]
+            perturbation = np.random.normal(loc=1, scale=std, size=full_size)
+            base_bid = bidder.rest_of_bids
+            value = np.flip(np.sort(np.clip(perturbation * base_bid[None, :], MIN_BID_VALUE, MAX_BID_VALUE), axis=1))
+            return value
+
+        else:
+            raise Exception("distribution not yet implemented")
+
+    def resample(self):
+        self.utility_input = self.make_sample_colluders(1)[0]
+        self.rest_of_bids = self.make_sample_rest_of_players(1)[0]
 
     def render(self, mode='human', close=False):
         # Render the environment to the screen
         return
 
-if __name__ =="__main__":
-    rest_of_bids = np.random.uniform(size=(3 * 3, ))
+
+if __name__ == "__main__":
+    rest_of_bids = np.random.uniform(size=(3 * 3,))
     utility = 2 * np.random.uniform(size=(2 * 3,))
 
     config = {
@@ -73,10 +114,13 @@ if __name__ =="__main__":
         "rest_of_bids": rest_of_bids,
         "items_to_sell": 3,
         "number_of_players": 5,
-        "distribution_type_colluders": "static",
-        "distribution_type": "static",
+        "distribution_type_reset_outsiders": "static",
+        "distribution_type_reset_colluders": "static",
+        "distribution_type_colluders": "uniform",
+        "distribution_type_outsiders": "uniform",
         "max_count": 3,
-        "utility": utility
+        "utility": utility,
+        "perturbation_std": 0.1
     }
     env = OneBidderEnv(config)
     z = 0
