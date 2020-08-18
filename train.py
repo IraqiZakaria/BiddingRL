@@ -7,9 +7,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import matplotlib
+from replayMemory import Transition
 
 from gym_environment import OneBidderEnv
 
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
 rest_of_bids = np.flip(np.sort(np.random.uniform(size=(3 * 3,))))
 utility = 1.2 * np.flip(np.sort(np.random.uniform(size=(2 * 3,)), axis=-1))
 
@@ -66,6 +68,7 @@ def select_action(state):
 
 
 episode_durations = []
+rewards = []
 
 
 def plot_durations():
@@ -75,12 +78,12 @@ def plot_durations():
     plt.title('Training...')
     plt.xlabel('Episode')
     plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
+    plt.plot(durations_t.cpu().numpy())
     # Take 100 episode averages and plot them too
     if len(durations_t) >= 100:
         means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+        plt.plot(means.cpu().numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
     is_ipython = 'inline' in matplotlib.get_backend()
@@ -89,6 +92,26 @@ def plot_durations():
         display.clear_output(wait=True)
         display.display(plt.gcf())
 
+def plot_rewards():
+    plt.figure(2)
+    plt.clf()
+    durations_t = torch.tensor(episode_durations, dtype=torch.float)
+    plt.title('Training...')
+    plt.xlabel('Episode')
+    plt.ylabel('Duration')
+    plt.plot(durations_t.cpu().numpy())
+    # Take 100 episode averages and plot them too
+    if len(durations_t) >= 100:
+        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+        means = torch.cat((torch.zeros(99), means))
+        plt.plot(rewards)
+
+    plt.pause(0.001)  # pause a bit so that plots are updated
+    is_ipython = 'inline' in matplotlib.get_backend()
+
+    if is_ipython:
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:
@@ -136,15 +159,16 @@ def optimize_model():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
-num_episodes = 50
+num_episodes = 1000
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     env.reset()
-    env.resample()
+    #env.resample()
     state = env.utility_input
+    state = torch.from_numpy(state.copy()).float().cpu()
     for t in range(100):
         # Select and perform an action
-        action = select_action(state)
+        action = select_action(state).cpu()
         _, reward, done, _ = env.step(action)
         reward = torch.tensor([reward], device=device)
 
@@ -163,14 +187,15 @@ for i_episode in range(num_episodes):
         # Perform one step of the optimization (on the target network)
         optimize_model()
         if done:
+            rewards.append(list(reward.cpu().numpy())[0])
             episode_durations.append(t + 1)
-            plot_durations()
+            plot_rewards()
+            #plot_durations()
             break
     # Update the target network, copying all weights and biases in DQN
     if i_episode % TARGET_UPDATE == 0:
         target_net.load_state_dict(policy_net.state_dict())
 
 print('Complete')
-env.close()
 plt.ioff()
 plt.show()

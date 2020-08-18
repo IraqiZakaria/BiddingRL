@@ -3,7 +3,8 @@ import numpy as np
 import gym
 from gym import spaces
 
-from vcg_solver import vcg_prioritizer, vcg_allocator, compute_overall_payment, compute_payment
+from vcg_solver import vcg_prioritizer, vcg_allocator, compute_overall_payment, compute_payment, vcg_allocator_torch, compute_payment_torch
+import torch
 
 MIN_BID_VALUE, MAX_BID_VALUE = 0.0, 1.0
 
@@ -38,21 +39,18 @@ class OneBidderEnv():  # gym.Env):
         return self.utility_input, reward, done, {}
 
     def calculate_vcg_reward(self, utility, bids):
-        utility_matrix = np.cumsum(
-            np.flip(np.sort(utility.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
-        all_bids = np.concatenate((bids.cpu(), self.rest_of_bids))
-        full_bids_matrix = np.cumsum(
-            np.flip(np.sort(all_bids.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
-        positions = vcg_prioritizer(all_bids, self.config["bids_per_participant"])
-        main_allocation = vcg_allocator(positions, self.config["items_to_sell"], self.config["number_of_players"])
+        utility_matrix = torch.cumsum(
+            torch.sort(torch.reshape(utility, (-1, self.config["bids_per_participant"])), dim=1, descending=True), dim=1)
+        all_bids = torch.cat((bids, self.rest_of_bids), 0)
+        full_bids_matrix = torch.cumsum(
+            torch.sort(torch.reshape(all_bids, (-1, self.config["bids_per_participant"])), dim=1, descending=True), dim=1)
+        positions = vcg_allocator_torch(all_bids, self.config["bids_per_participant"])
+        main_allocation = vcg_allocator_torch(positions, self.config["items_to_sell"], self.config["number_of_players"])
         overall_allocation_value = compute_overall_payment(main_allocation, full_bids_matrix)
-        try:
-            payments = sum(compute_payment(positions, full_bids_matrix, range(self.config['players_colluding']),
+        payments = compute_payment_torch(positions, full_bids_matrix, range(self.config['players_colluding']),
                                    self.config["items_to_sell"],
                                    self.config["number_of_players"], utility_matrix, main_allocation,
-                                   overall_allocation_value))
-        except:
-            a=0
+                                   overall_allocation_value)
         return payments
 
     def reset(self):

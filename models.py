@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 class DQNbn(nn.Module):
@@ -40,23 +41,14 @@ class DQN(nn.Module):
             n_actions (int): number of outputs
         """
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, 32, kernel_size=8, stride=4)
-        # self.bn1 = nn.BatchNorm2d(32)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        # self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
-        # self.bn3 = nn.BatchNorm2d(64)
-        self.fc4 = nn.Linear(7 * 7 * 64, 512)
-        self.head = nn.Linear(512, n_actions)
+        self.fc1 = nn.Linear(in_channels, 5)
+        self.fc2 = nn.Linear(5, 15)
+        self.fc3 = nn.Linear(15, 10)
+        self.fc4 = nn.Linear(10, n_actions)
 
     def forward(self, x):
-        try:
-            x = F.relu(self.conv1(x))
-        except:
-            x = torch.from_numpy(x)
-            x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.fc4(x.view(x.size(0), -1)))
-        # x = self.fc4(x.view(x.size(0), -1))
-        return self.head(x)
+        x = x.cuda()
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        return torch.sigmoid(self.fc4(x))
