@@ -46,26 +46,17 @@ def compute_payment(positions, full_bids_matrix, bidders_to_compute, number_of_i
             any_bidder = True
             break
     if any_bidder == False:
-        return np.zeros(shape=(len(bidders_to_compute)))
+        np.float64(0)
     valuation = []
     for bidder in bidders_to_compute:
-        print("bidder" + str(bidder) + " :")
         if main_allocation[bidder] == 0:
-            print("pass bidder")
             valuation.append(0.0)
         else:
             new_allocation = vcg_allocator_bidder(positions, bidder, number_of_items_to_sell, number_of_players)
-            print(new_allocation)
             payment = overall_allocation_value - compute_overall_payment(new_allocation, full_bids_matrix)
-            if payment < 0:
-                print("overall allocation value")
-                print(overall_allocation_value)
-                print("allocation_bidder")
-                print(compute_overall_payment(new_allocation, full_bids_matrix))
+
             valuation.append(payment)
     utility_team = compute_utility_team(main_allocation, utility_matrix, bidders_to_compute)
-    print(utility_team)
-    print(valuation)
     return utility_team - sum(valuation)
 
 
@@ -80,23 +71,13 @@ def compute_payment_torch(positions, full_bids_matrix, bidders_to_compute, numbe
         return torch.zeros(len(bidders_to_compute))
     valuation = []
     for bidder in bidders_to_compute:
-        print("bidder" + str(bidder) + " :")
         if main_allocation[bidder] == 0:
-            print("pass bidder")
             valuation.append(0.0)
         else:
             new_allocation = vcg_allocator_bidder_torch(positions, bidder, number_of_items_to_sell, number_of_players)
-            print(new_allocation)
             payment = overall_allocation_value - compute_overall_payment(new_allocation, full_bids_matrix)
-            if payment < 0:
-                print("overall allocation value")
-                print(overall_allocation_value)
-                print("allocation_bidder")
-                print(compute_overall_payment(new_allocation, full_bids_matrix))
             valuation.append(payment)
     utility_team = compute_utility_team(main_allocation, utility_matrix, bidders_to_compute)
-    print(utility_team)
-    print(valuation)
     return utility_team - sum(valuation)
 
 def compute_overall_payment(current_allocation, full_bids_matrix):
