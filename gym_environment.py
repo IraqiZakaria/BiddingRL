@@ -72,16 +72,18 @@ class OneBidderEnv():  # gym.Env):
             raise Exception('distribution type colluders not yet implemented')
         if self.config["distribution_type_reset_colluders"] == "static":
             pass
+        elif self.config["distribution_type_reset_colluders"] == "perturbation":
+            self.utility_input = self.make_sample_colluders(1)[0]
         else:
             raise Exception('distribution type other bidders not yet implemented')
         return self.utility_input
 
     def make_sample_colluders(bidder, size):
-        if bidder.config["distribution_type_colluders"] == "uniform":
+        if bidder.config["distribution_type_reset_colluders"] == "uniform":
             bids = np.random.uniform(size=(size, bidder.players_colluding * bidder.bids_per_participant,))
             return np.flip(np.sort(bids, axis=1), axis=1)
-        elif bidder.config["distribution_type_colluders"] == "perturbation":
-            std = bidder.config["perturbation_std"]
+        elif bidder.config["distribution_type_reset_colluders"] == "perturbation":
+            std = bidder.config["perturbation_std_colluders"]
             perturbation = np.random.normal(loc=1, scale=std,
                                             size=(size, bidder.players_colluding * bidder.bids_per_participant,))
             base_bid = bidder.initial_utility
@@ -98,7 +100,7 @@ class OneBidderEnv():  # gym.Env):
             bids = np.random.uniform(size=full_size)
             return np.flip(np.sort(bids, axis=1), axis=1)
         if bidder.config["distribution_type_reset_outsiders"] == "perturbation":
-            std = bidder.config["perturbation_std"]
+            std = bidder.config["perturbation_std_rest_of_bidders"]
             perturbation = np.random.normal(loc=1, scale=std, size=full_size)
             base_bid = bidder.initial_rest_of_bids
             value = np.flip(np.sort(np.clip(perturbation * base_bid[None, :], MIN_BID_VALUE, MAX_BID_VALUE), axis=1))
@@ -136,4 +138,5 @@ if __name__ == "__main__":
     }
     env = OneBidderEnv(config)
     env.reset()
+
     z = 0

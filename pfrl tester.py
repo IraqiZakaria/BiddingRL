@@ -264,20 +264,30 @@ def main(env):
 
 
 if __name__ == "__main__":
+    number_of_players_colluding = 2
+    other_bidders = 3
+    allowed_bids = 3
+    items_to_sell = 4
+    utility_add_on = 1
+    std_rest_of_bidders = 0.2
+    std_colluders = 0.1
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    rest_of_bids = np.flip(np.sort(np.random.uniform(size=(3 * 3,))))
-    utility = 1.2 * np.flip(np.sort(np.random.uniform(size=(2 * 3,)), axis=-1))
+    rest_of_bids = np.flip(np.sort(np.random.uniform(size=(other_bidders * allowed_bids,))))
+    utility = utility_add_on * np.flip(np.sort(np.random.uniform(size=(number_of_players_colluding * allowed_bids,)), axis=-1))
     config = {
-        "players_colluding": 2,
-        'bids_per_participant': 3,
+        "players_colluding": number_of_players_colluding,
+        'bids_per_participant': allowed_bids,
         "rest_of_bids": rest_of_bids,
-        "items_to_sell": 3,
-        "number_of_players": 5,
+        "items_to_sell": items_to_sell,
+        "number_of_players": number_of_players_colluding + other_bidders,
         "distribution_type_reset_outsiders": "perturbation",
-        "distribution_type_reset_colluders": "static",
-        "max_count": 3,
+        "distribution_type_reset_colluders": "perturbation",
+        "max_count": allowed_bids,
         "utility": utility,
-        "perturbation_std": 0.3
+        "perturbation_std_colluders": std_colluders,
+        "perturbation_std_rest_of_bidders": std_rest_of_bidders
     }
     env = OneBidderEnv(config)
     main(env)
+    print(utility)
+    print(rest_of_bids)
