@@ -2,7 +2,7 @@ import numpy as np
 import gym
 from gym import spaces
 
-from vcg_solver import vcg_prioritizer, vcg_allocator, compute_overall_payment, compute_payment
+from vcg_solver import vcg_prioritizer, vcg_allocator, compute_overall_payment, compute_payment_separated, compute_payment_combined
 
 MIN_BID_VALUE, MAX_BID_VALUE = 0.0, 1.0
 MAX_REWARD = 20
@@ -46,21 +46,31 @@ class OneBidderEnv():  # gym.Env):
         return self.utility_input, reward, done, {}
 
     def calculate_vcg_reward(self, utility, bids):
-        utility_matrix = np.cumsum(
-            np.flip(np.sort(utility.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
+
         all_bids = np.concatenate((bids, self.rest_of_bids))
         full_bids_matrix = np.cumsum(
             np.flip(np.sort(all_bids.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
         positions = vcg_prioritizer(all_bids, self.config["bids_per_participant"])
         main_allocation = vcg_allocator(positions, self.config["items_to_sell"], self.config["number_of_players"])
         overall_allocation_value = compute_overall_payment(main_allocation, full_bids_matrix)
-
-        payments = compute_payment(positions, full_bids_matrix, range(self.config['players_colluding']),
-                                   self.config["items_to_sell"],
-                                   self.config["number_of_players"], utility_matrix, main_allocation,
-                                   overall_allocation_value)
-
-        return payments
+        if self.config["utility_type"] == "separated":
+            utility_matrix = np.cumsum(
+                np.flip(np.sort(utility.reshape((-1, self.config["bids_per_participant"])), axis=1), axis=1), axis=1)
+            payments = compute_payment_separated(positions, full_bids_matrix, range(self.config['players_colluding']),
+                                       self.config["items_to_sell"],
+                                       self.config["number_of_players"], utility_matrix, main_allocation,
+                                       overall_allocation_value)
+            return payments
+        elif self.config["utility_type"] == "combined":
+            utility_matrix = np.cumsum(np.flip(np.sort(utility)))
+            revenue = utility_matrix[np.sum(main_allocation[:self.config['players_colluding']]) - 1 ]
+            payments = compute_payment_combined(positions, full_bids_matrix, range(self.config['players_colluding']),
+                                       self.config["items_to_sell"],
+                                       self.config["number_of_players"], main_allocation,
+                                       overall_allocation_value)
+            return revenue - payments
+        else:
+            raise Exception("Method not yet implemented")
 
     def reset(self):
 

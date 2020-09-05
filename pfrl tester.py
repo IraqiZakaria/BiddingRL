@@ -267,7 +267,7 @@ if __name__ == "__main__":
     number_of_players_colluding = 2
     other_bidders = 3
     allowed_bids = 3
-    items_to_sell = 4
+    items_to_sell = 3
     utility_add_on = 1
     std_rest_of_bidders = 0.2
     std_colluders = 0.1
@@ -285,7 +285,8 @@ if __name__ == "__main__":
         "max_count": allowed_bids,
         "utility": utility,
         "perturbation_std_colluders": std_colluders,
-        "perturbation_std_rest_of_bidders": std_rest_of_bidders
+        "perturbation_std_rest_of_bidders": std_rest_of_bidders,
+        "utility_type": "combined"
     }
     env = OneBidderEnv(config)
     main(env)
