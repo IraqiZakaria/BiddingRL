@@ -113,8 +113,9 @@ def compute_overall_payment(current_allocation, full_bids_matrix):
 def compute_utility_team(current_allocation, utility_matrix, team: list):
     sum = 0
     count = -1
-    for value in current_allocation:
+    for value in current_allocation[team]:
         count += 1
-        if value > 0 and count in team:
+        if value > 0 and count in range(len(team)):
+
             sum += utility_matrix[count, value - 1]
     return sum

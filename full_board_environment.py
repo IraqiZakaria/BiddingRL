@@ -4,7 +4,7 @@ from vcg_solver import vcg_allocator, vcg_prioritizer, compute_overall_payment, 
     compute_payment_combined
 from gym import spaces
 
-from gym_environment import OneBidderEnv
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 MIN_BID_VALUE, MAX_BID_VALUE = 0.0, 1.0
 MAX_REWARD = 20
@@ -21,12 +21,15 @@ class BidderForMultiAgent():
         self.initial_utility = self.utility_input
 
         self.action_space = spaces.Box(low=0.0, high=1.0,
-                                       shape=(len(self.config["players_colluding"]) * self.config["bids_per_participant"],),
+                                       shape=(
+                                           len(self.config["players_colluding"]) * self.config[
+                                               "bids_per_participant"],),
                                        dtype=np.float32)
         # Example for using image as input:
         self.observation_space = spaces.Box(low=0, high=1.0,
                                             shape=(
-                                                len(self.config["players_colluding"]) * self.config["bids_per_participant"],),
+                                                len(self.config["players_colluding"]) * self.config[
+                                                    "bids_per_participant"],),
                                             dtype=np.float32)
         self.reward_range = (0, MAX_REWARD)
         self.metadata = {}
@@ -53,7 +56,8 @@ class BidderForMultiAgent():
             std = self.config["perturbation_std_colluders"]
             perturbation = np.random.normal(loc=1, scale=std,
                                             size=(size, len(
-                                                self.config["players_colluding"]) * self.config["bids_per_participant"],))
+                                                self.config["players_colluding"]) * self.config[
+                                                      "bids_per_participant"],))
             base_bid = self.initial_utility
             value = np.flip(np.sort(np.clip(perturbation * base_bid[None, :], MIN_BID_VALUE, MAX_BID_VALUE), axis=1))
             return value
@@ -61,12 +65,16 @@ class BidderForMultiAgent():
         else:
             raise Exception("distribution not yet implemented")
 
+    def gen_policy(self):
+        return (None, self.observation_space, self.action_space, {})
 
-class MultiAgentsEnv():
+
+class MultiAgentsEnv(MultiAgentEnv):
     def __init__(self, dict_of_colluders_configs, parameters):
         # Do a better init :  an init that will need only one utility input, and
         self.overall_config = dict_of_colluders_configs
         self.parameters = parameters
+        self.num_agents = self.parameters['number_of_agents']
 
     def reset(self):
         # All the other bidders maps will be static btw
@@ -84,11 +92,13 @@ class MultiAgentsEnv():
         dones['__all__'] = True
 
         indexes = {}
-        bids = []
+        bids = np.zeros(self.parameters['number_of_players'] * self.parameters["bids_per_participant"])
         for key in actions.keys():
-            indexes[key] = self.overall_config[key].config['players_colluding']
-            bids.append(actions[key])
-        bids = np.concatenate(bids)
+            index = self.overall_config[key].config['players_colluding']
+            indexes[key] = index
+            bids[range(index[0] * self.parameters["bids_per_participant"],
+                       (index[-1] + 1) * self.parameters["bids_per_participant"])] = actions[key]
+
         full_bids_matrix = np.cumsum(
             np.flip(np.sort(bids.reshape((-1, self.parameters["bids_per_participant"])), axis=1), axis=1), axis=1)
         positions = vcg_prioritizer(bids, self.parameters["bids_per_participant"])
@@ -134,23 +144,26 @@ if __name__ == "__main__":
     number_of_collusions = 3
     dict_of_colluders_configs = {}
     for k in range(number_of_collusions):
-        players_colluding = range(2*k, 2*k + 2)
+        players_colluding = range(2 * k, 2 * k + 2)
         number_of_players_colluding = len(players_colluding)
         utility = utility_add_on * np.flip(
             np.sort(np.random.uniform(size=(number_of_players_colluding * bids_per_participant,)), axis=-1))
 
         config = {
-            "players_colluding" : players_colluding,
-            "bids_per_participant":  bids_per_participant,
+            "players_colluding": players_colluding,
+            "bids_per_participant": bids_per_participant,
             "utility": utility,
             "distribution_type_reset_colluders": "static",
-            "utility_type": "separated"
+            "utility_type": "combined"
         }
-        dict_of_colluders_configs["colluders_"+str(k)] = BidderForMultiAgent(config)
+        dict_of_colluders_configs["colluders_" + str(k)] = BidderForMultiAgent(config)
     parameters = {
-        "number_of_players": bids_per_participant * number_of_collusions * 2,
+        "number_of_agents": number_of_collusions,
+        "number_of_players": number_of_collusions * 2,
         "items_to_sell": items_to_sell,
         "bids_per_participant": bids_per_participant
     }
     env = MultiAgentsEnv(dict_of_colluders_configs, parameters)
-    env.reset()
+    tune.run
+    actions = env.reset()
+    print(env.step(actions))
