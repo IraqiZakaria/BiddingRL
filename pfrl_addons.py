@@ -1,6 +1,7 @@
 import logging
 import os
 from pfrl.experiments.evaluator import Evaluator
+import numpy as np
 
 
 def save_agent(agent, t, outdir, logger, suffix=""):
@@ -26,6 +27,7 @@ def train_agent(
     logger = logger or logging.getLogger(__name__)
 
     episode_r = {key: 0 for key in agents.keys()}
+    episode_r_0 = {key: 0 for key in agents.keys()}
     episode_idx = 0
 
     # o_0, r_0
@@ -41,7 +43,7 @@ def train_agent(
         while t < steps:
             actions = {}
             for key in agents.keys():
-                actions[key] = agents[key].act(obs[key])
+                actions[key] = np.clip(agents[key].act(obs[key]), a_min=0, a_max=1)
             # a_t
 
             # o_{t+1}, r_{t+1}
@@ -53,13 +55,18 @@ def train_agent(
             maximum_episode_len = max(max_episode_len.values())
             reset = {key: episode_len == max_episode_len[key] or info[key].get("needs_reset", False) for key in
                      agents.keys()}
+            resets = all(value == True for value in reset.values())
+            dones = all(value == True for value in done.values())
+
             for key in agents.keys():
+                if t == 1000:
+                    a = 0
                 agents[key].observe(obs[key], r[key], done[key], reset[key])
 
             for hook in step_hooks:
                 hook(env, agents, t)
 
-            if done or reset or t == steps:
+            if dones or resets or t == steps:
                 logger.info(
                     "outdir:%s step:%s episode:%s R:%s",
                     outdir,
@@ -67,7 +74,8 @@ def train_agent(
                     episode_idx,
                     episode_r,
                 )
-                logger.info("statistics:%s", agents.get_statistics())
+                for key in agents.keys():
+                    logger.info("statistics:%s %s", key,  agents[key].get_statistics())
                 if evaluator is not None:
                     evaluator.evaluate_if_necessary(t=t, episodes=episode_idx + 1)
                     if (
@@ -78,7 +86,7 @@ def train_agent(
                 if t == steps:
                     break
                 # Start a new episode
-                episode_r = 0
+                episode_r = episode_r_0
                 episode_idx += 1
                 episode_len = 0
                 obs = env.reset()

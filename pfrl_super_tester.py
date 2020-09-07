@@ -203,6 +203,7 @@ if __name__ == "__main__":
     bids_per_participant = 3
     items_to_sell = 3
     number_of_collusions = 3
+    std = 0.2
     dict_of_colluders_configs = {}
     for k in range(number_of_collusions):
         players_colluding = range(2 * k, 2 * k + 2)
@@ -214,8 +215,9 @@ if __name__ == "__main__":
             "players_colluding": players_colluding,
             "bids_per_participant": bids_per_participant,
             "utility": utility,
-            "distribution_type_reset_colluders": "static",
-            "utility_type": "separated"
+            "distribution_type_reset_colluders": "perturbation",
+            "perturbation_std_colluders" : std,
+            "utility_type": "separated",
         }
         dict_of_colluders_configs["colluders_" + str(k)] = BidderForMultiAgent(config)
     parameters = {
