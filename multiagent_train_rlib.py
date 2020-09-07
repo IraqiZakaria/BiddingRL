@@ -59,9 +59,12 @@ if __name__ == "__main__":
     parser.add_argument('--simple', action='store_true')
     args = parser.parse_args()
 
+    num_iters = 100000
+    args_simple = False
+
     tune.run(
         'PPO',
-        stop={'training_iteration': args.num_iters},
+        stop={'training_iteration': num_iters},
         checkpoint_freq=50,
         config={
             'env': 'Board',
@@ -74,7 +77,8 @@ if __name__ == "__main__":
             'sample_batch_size': 100,
             'sgd_minibatch_size': 500,
             'num_sgd_iter': 10,
-            'num_workers': 4,
+            'num_workers': 1,
+            "queue_trials": True,
             'num_envs_per_worker': 1,
             'batch_mode': 'truncate_episodes',
             'observation_filter': 'NoFilter',
@@ -82,11 +86,11 @@ if __name__ == "__main__":
             'num_gpus': 0,
             'lr': 2.5e-4,
             'log_level': 'DEBUG',
-            'simple_optimizer': args.simple,
+            'simple_optimizer': args_simple,
             'multiagent': {
                 'policies': policy_graphs,
                 'policy_mapping_fn': tune.function(
-                    lambda agent_id: policy_ids[int(agent_id[6:])]),
+                    lambda agent_id: policy_ids[0]),
             },
         },
     )
