@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 
 
 def vcg_prioritizer(full_bids_list, number_of_items_per_player: int):
@@ -15,11 +14,6 @@ def vcg_allocator(positions, number_of_items_to_sell: int, number_of_players: in
     counters = np.bincount(realized_bids, minlength=number_of_players)
     return counters
 
-def vcg_allocator_torch(positions, number_of_items_to_sell: int, number_of_players: int):
-    realized_bids = positions[:number_of_items_to_sell]
-    counters = torch.bincount(realized_bids, minlength=number_of_players)
-    return counters
-
 
 def vcg_allocator_bidder(positions, bidder: int, number_of_items_to_sell: int, number_of_players: int):
     capped_positions = []
@@ -28,15 +22,6 @@ def vcg_allocator_bidder(positions, bidder: int, number_of_items_to_sell: int, n
             capped_positions.append(element)
     new_positions = np.array(capped_positions)
     return vcg_allocator(new_positions, number_of_items_to_sell, number_of_players)
-
-def vcg_allocator_bidder_torch(positions, bidder: int, number_of_items_to_sell: int, number_of_players: int):
-    capped_positions = []
-    for element in positions:
-        if element != bidder:
-            capped_positions.append(element)
-    new_positions = torch.FloatTensor(capped_positions)
-    return vcg_allocator_torch(new_positions, number_of_items_to_sell, number_of_players)
-
 
 def compute_payment_separated(positions, full_bids_matrix, bidders_to_compute, number_of_items_to_sell: int,
                     number_of_players: int, utility_matrix, main_allocation, overall_allocation_value):
@@ -78,27 +63,6 @@ def compute_payment_combined(positions, full_bids_matrix, bidders_to_compute, nu
 
             valuation.append(payment)
     return  sum(valuation)
-
-
-def compute_payment_torch(positions, full_bids_matrix, bidders_to_compute, number_of_items_to_sell: int,
-                    number_of_players: int, utility_matrix, main_allocation, overall_allocation_value):
-    any_bidder = False
-    for element in bidders_to_compute:
-        if main_allocation[element] != 0:
-            any_bidder = True
-            break
-    if any_bidder == False:
-        return torch.zeros(len(bidders_to_compute))
-    valuation = []
-    for bidder in bidders_to_compute:
-        if main_allocation[bidder] == 0:
-            valuation.append(0.0)
-        else:
-            new_allocation = vcg_allocator_bidder_torch(positions, bidder, number_of_items_to_sell, number_of_players)
-            payment = overall_allocation_value - compute_overall_payment(new_allocation, full_bids_matrix)
-            valuation.append(payment)
-    utility_team = compute_utility_team(main_allocation, utility_matrix, bidders_to_compute)
-    return utility_team - sum(valuation)
 
 def compute_overall_payment(current_allocation, full_bids_matrix):
     sum = 0
