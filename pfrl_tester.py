@@ -64,7 +64,7 @@ class Args():
     args.num_envs = 1
     args.noisy_net_sigma =  None
     args.actor_learner = False
-    args.outdir = "results\\2"
+    args.outdir = "results\\single_agent_2_colluders"
 
 
 
@@ -255,8 +255,8 @@ if __name__ == "__main__":
         "rest_of_bids": rest_of_bids,
         "items_to_sell": items_to_sell,
         "number_of_players": number_of_players_colluding + other_bidders,
-        "distribution_type_reset_outsiders": "perturbation",
-        "distribution_type_reset_colluders": "perturbation",
+        "distribution_type_reset_outsiders": "uniform",
+        "distribution_type_reset_colluders": "uniform",
         "max_count": allowed_bids,
         "utility": utility,
         "perturbation_std_colluders": std_colluders,

@@ -78,11 +78,15 @@ class OneBidderEnv():  # gym.Env):
             pass
         elif self.config["distribution_type_reset_outsiders"] == "perturbation":
             self.rest_of_bids = self.make_sample_rest_of_players(1)[0]
+        elif self.config["distribution_type_reset_outsiders"] == "uniform":
+            self.rest_of_bids = self.make_sample_rest_of_players(1)[0]
         else:
             raise Exception('distribution type colluders not yet implemented')
         if self.config["distribution_type_reset_colluders"] == "static":
             pass
         elif self.config["distribution_type_reset_colluders"] == "perturbation":
+            self.utility_input = self.make_sample_colluders(1)[0]
+        elif self.config["distribution_type_reset_colluders"] == "uniform":
             self.utility_input = self.make_sample_colluders(1)[0]
         else:
             raise Exception('distribution type other bidders not yet implemented')
@@ -109,7 +113,7 @@ class OneBidderEnv():  # gym.Env):
         if bidder.config['distribution_type_reset_outsiders'] == "uniform":
             bids = np.random.uniform(size=full_size)
             return np.flip(np.sort(bids, axis=1), axis=1)
-        if bidder.config["distribution_type_reset_outsiders"] == "perturbation":
+        elif bidder.config["distribution_type_reset_outsiders"] == "perturbation":
             std = bidder.config["perturbation_std_rest_of_bidders"]
             perturbation = np.random.normal(loc=1, scale=std, size=full_size)
             base_bid = bidder.initial_rest_of_bids

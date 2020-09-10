@@ -2,6 +2,7 @@ import logging
 import os
 from pfrl.experiments.evaluator import Evaluator
 import numpy as np
+import os
 
 
 def save_agent(agent, t, outdir, logger, suffix=""):
@@ -44,6 +45,9 @@ def train_agent(
             actions = {}
             for key in agents.keys():
                 actions[key] = np.clip(agents[key].act(obs[key]), a_min=0, a_max=1)
+                # agents[key].batch_last_action =  np.clip(agents[key].batch_last_action, a_min=0, a_max=1)
+                # agents[key].replay_buffer.memory[-1][0]['action'] = np.clip(agents[key].replay_buffer.memory[-1][0]['action'], a_min=0, a_max=1)
+
             # a_t
 
             # o_{t+1}, r_{t+1}
@@ -61,7 +65,13 @@ def train_agent(
             for key in agents.keys():
                 if t == 1000:
                     a = 0
+
                 agents[key].observe(obs[key], r[key], done[key], reset[key])
+
+                agents[key].replay_buffer.memory[-1][0]['action'] = np.clip(
+                    agents[key].replay_buffer.memory[-1][0]['action'], a_min=0, a_max=1).astype(np.float32)
+                agents[key].replay_buffer.memory[-1][0]['next_state'] = np.clip(
+                    agents[key].replay_buffer.memory[-1][0]['next_state'], a_min=0, a_max=1).astype(np.float32)
 
             for hook in step_hooks:
                 hook(env, agents, t)
@@ -75,14 +85,17 @@ def train_agent(
                     episode_r,
                 )
                 for key in agents.keys():
-                    logger.info("statistics:%s %s", key,  agents[key].get_statistics())
+                    logger.info("statistics:%s %s", key, agents[key].get_statistics())
                 if evaluator is not None:
-                    evaluator.evaluate_if_necessary(t=t, episodes=episode_idx + 1)
-                    if (
-                            successful_score is not None
-                            and evaluator.max_score >= successful_score
-                    ):
-                        break
+                    for key in evaluator.keys():
+                        evaluation = evaluator[key]
+                        if evaluation is not None:
+                            evaluation.evaluate_if_necessary(t=t, episodes=episode_idx + 1)
+                            if (
+                                    successful_score is not None
+                                    and evaluation.max_score >= successful_score
+                            ):
+                                break
                 if t == steps:
                     break
                 # Start a new episode
@@ -158,22 +171,27 @@ def train_agent_with_evaluation(
 
     if eval_max_episode_len is None:
         eval_max_episode_len = train_max_episode_len
+    evaluators = {}
+    for key in agent.keys():
+        try :
+            open(os.path.join(outdir + str(key), "scores.txt"), "w")
+        except:
+            os.mkdir(outdir + str(key))
 
-    evaluator = None
-    # evaluator = Evaluator(
-    #     n_steps=eval_n_steps,
-    #     n_episodes=eval_n_episodes,
-    #     eval_interval=eval_interval,
-    #     outdir=outdir,
-    #     max_episode_len=eval_max_episode_len,
-    #     step_offset=step_offset,
-    #     save_best_so_far_agent=save_best_so_far_agent,
-    #     use_tensorboard=use_tensorboard,
-    #     logger=logger,
-    #     agent=agent,
-    #     env=eval_env,
-    # )
-
+        evaluators[key] = Evaluator(
+            n_steps=eval_n_steps,
+            n_episodes=eval_n_episodes,
+            eval_interval=eval_interval,
+            outdir=outdir + str(key),
+            max_episode_len=eval_max_episode_len,
+            step_offset=step_offset,
+            save_best_so_far_agent=save_best_so_far_agent,
+            use_tensorboard=use_tensorboard,
+            logger=logger,
+            agent=agent[key],
+            env=eval_env,
+        )
+    evaluators = None
     train_agent(
         agent,
         env,
@@ -182,7 +200,7 @@ def train_agent_with_evaluation(
         checkpoint_freq=checkpoint_freq,
         max_episode_len=train_max_episode_len,
         step_offset=step_offset,
-        evaluator=evaluator,
+        evaluator=evaluators,
         successful_score=successful_score,
         step_hooks=step_hooks,
         logger=logger,

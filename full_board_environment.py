@@ -110,7 +110,7 @@ class MultiAgentsEnv(MultiAgentEnv):
             utility = self.overall_config[key].utility_input
 
             dones[key] = True
-            new_obs[key] = utility
+            new_obs[key] = np.zeros(shape = np.shape(utility)).astype(np.float32)
             if self.overall_config[key].config["utility_type"] == "separated":
                 utility_matrix = np.cumsum(
                     np.flip(np.sort(utility.reshape((-1, self.parameters["bids_per_participant"])), axis=1), axis=1),

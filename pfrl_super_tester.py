@@ -23,42 +23,43 @@ from pfrl_addons import train_agent_with_evaluation
 
 import torch
 
-class Args():
-  def __init__(args):
 
-    args.seed=0
-    args.gpu=0
-    args.final_exploration_steps=10 ** 4
-    args.start_epsilon=1.0
-    args.end_epsilon=0.1
-    args.noisy_net_sigmat=None
-    args.demo=False
-    args.load=None
-    args.steps = 10 ** 4
-    args.prioritized_replay=""
-    action="store_true"
-    args.replay_start_size=1000
-    args.target_update_interval=10 ** 2
-    args.target_update_method="hard"
-    args.soft_update_tau=1e-2
-    args.update_interval=1
-    args.eval_n_runs=100
-    args.eval_interval=10 ** 4
-    args.n_hidden_channels=100
-    args.n_hidden_layers=2
-    args.gamma=0.99
-    args.minibatch_size=None
-    args.render_train = ""
-    action="store_true"
-    args.render_eval = ""
-    action="store_true"
-    args.monitor=""
-    action="store_true"
-    args.reward_scale_factor=1e-3
-    args.num_envs = 1
-    args.noisy_net_sigma =  None
-    args.actor_learner = False
-    args.outdir = "results\\2"
+class Args():
+    def __init__(args):
+        args.seed = 0
+        args.gpu = 0
+        args.final_exploration_steps = 10 ** 4
+        args.start_epsilon = 1.0
+        args.end_epsilon = 0.1
+        args.noisy_net_sigmat = None
+        args.demo = False
+        args.load = None
+        args.steps = 10 ** 5
+        args.prioritized_replay = ""
+        action = "store_true"
+        args.replay_start_size = 10 ** 4
+        args.target_update_interval = 10 ** 2
+        args.target_update_method = "hard"
+        args.soft_update_tau = 1e-2
+        args.update_interval = 1
+        args.eval_n_runs = 100
+        args.eval_interval = 10 ** 4
+        args.n_hidden_channels = 100
+        args.n_hidden_layers = 2
+        args.gamma = 0.99
+        args.minibatch_size = None
+        args.render_train = ""
+        action = "store_true"
+        args.render_eval = ""
+        action = "store_true"
+        args.monitor = ""
+        action = "store_true"
+        args.reward_scale_factor = 1e-3
+        args.num_envs = 1
+        args.noisy_net_sigma = None
+        args.actor_learner = False
+        args.outdir = "results\\2"
+
 
 def main(env, args):
     import logging
@@ -91,6 +92,7 @@ def main(env, args):
         if (args.render_eval and test) or (args.render_train and not test):
             env = pfrl.wrappers.Render(env)
         return env
+
     obs_spaces_dict = {}
     obs_size_dict = {}
     action_space_dict = {}
@@ -102,10 +104,10 @@ def main(env, args):
 
     for key in env.overall_config.keys():
         sub_env = env.overall_config[key]
-        env.overall_config[key] = make_env(env = sub_env, test= False)
+        env.overall_config[key] = make_env(env=sub_env, test=False)
         timestep_limits[key] = sub_env.spec.max_episode_steps
         obs_space = sub_env.observation_space
-        obs_spaces_dict[key]  = sub_env.observation_space
+        obs_spaces_dict[key] = sub_env.observation_space
         obs_size = obs_space.low.size
         obs_size_dict[key] = obs_size
         action_space = sub_env.action_space
@@ -195,7 +197,6 @@ def main(env, args):
     )
 
 
-
 if __name__ == "__main__":
     args = Args()
 
@@ -215,8 +216,8 @@ if __name__ == "__main__":
             "players_colluding": players_colluding,
             "bids_per_participant": bids_per_participant,
             "utility": utility,
-            "distribution_type_reset_colluders": "perturbation",
-            "perturbation_std_colluders" : std,
+            "distribution_type_reset_colluders": "static",
+            "perturbation_std_colluders": std,
             "utility_type": "separated",
         }
         dict_of_colluders_configs["colluders_" + str(k)] = BidderForMultiAgent(config)
@@ -230,6 +231,7 @@ if __name__ == "__main__":
 
     def env_creator(_):
         return MultiAgentsEnv(dict_of_colluders_configs, parameters)
+
 
     single_env = MultiAgentsEnv(dict_of_colluders_configs, parameters)
     actions = single_env.reset()
