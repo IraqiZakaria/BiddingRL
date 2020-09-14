@@ -62,7 +62,7 @@ def compute_payment_combined(positions, full_bids_matrix, bidders_to_compute, nu
             payment = overall_allocation_value - compute_overall_payment(new_allocation, full_bids_matrix)
 
             valuation.append(payment)
-    return  sum(valuation)
+    return sum(valuation)
 
 def compute_overall_payment(current_allocation, full_bids_matrix):
     sum = 0
